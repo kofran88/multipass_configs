@@ -48,7 +48,7 @@ locals {
 
 resource "local_file" "user_data" {
   filename = "ubuntu-cloudinit.yml"
-  content  = templatefile("templates/${var.user_data_tpl}", merge(local.template_vars))
+  content  = templatefile(var.user_data_tpl, merge(local.template_vars))
 }
 
 data "multipass_instance" "ubuntu" {

@@ -47,12 +47,12 @@ spec:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: workshop-secret
+                  name: secret
                   key: mysql_root_password
             - name: MYSQL_DATABASE
               valueFrom:
                 secretKeyRef:
-                  name: workshop-secret
+                  name: secret
                   key: mysql_db
           ports:
             - containerPort: 3306
@@ -952,7 +952,7 @@ spec:
             - name: RUM_FRONTEND_IP
               valueFrom:
                 secretKeyRef:
-                  name: workshop-secret
+                  name: secret
                   key: url
             - name: RUM_PROTOCOL
               value: "http"
