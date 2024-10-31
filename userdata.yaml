@@ -108,4 +108,4 @@ runcmd:
   - /usr/local/bin/kubectl apply -f /tmp/workshop-secrets.yaml
 
   # Deploy App
-  - sudo kubectl apply -f deployment.yaml
+  - kubectl apply -f deployment.yaml
