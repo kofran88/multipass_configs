@@ -1,0 +1,111 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+groups:
+  - docker: [ubuntu]
+
+password: ${instance_password}
+
+chpasswd:
+  expire: false
+
+hostname: ${instance_name}
+
+packages:
+  - ansible
+  - docker
+  - docker-compose
+  - gnupg2
+  - jq
+  - lynx
+  - maven
+  - net-tools
+  - openjdk-17-jdk
+  - python3-flask
+  - python3-pip
+  - python3-venv
+  - shellinabox
+  - unzip
+  - zsh
+
+write_files:
+  - path: /etc/skel/.profile
+    append: true
+    content: |
+
+      echo "Waiting for cloud-init status..."
+      if ! /usr/bin/timeout 180 grep -q 'Cloud-init .*finished at' <(sudo tail -f /var/log/cloud-init-output.log); then
+        echo "Instance setup did not complete after 3 minutes. Please try again.";
+      else
+        echo "Your instance is ready!";
+      fi
+
+      INSTANCE=$(cat /etc/hostname)
+      CLUSTER_NAME="$INSTANCE-cluster"
+
+      export INSTANCE CLUSTER_NAME
+
+      export KUBECONFIG=/home/splunk/.kube/config
+      alias kc='kubectl'
+      alias dc='docker-compose'
+
+  - path: /tmp/workshop-secrets.yaml
+    permissions: '0755'
+    content: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: secret
+        namespace: default
+      type: Opaque
+      stringData:
+        app: ${instance_name}-store
+        env: ${instance_name}-workshop
+        url: frontend-external
+        mysql_root_password: "root"
+        mysql_db: "LxvGChW075"
+
+runcmd:
+  # Configure zsh
+  - chsh -s $(which zsh) ubuntu
+  - curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+  - echo "source /etc/skel/.profile" >> /home/ubuntu/.zshrc
+
+  # Configure motd
+  - curl -s https://raw.githubusercontent.com/splunk/observability-workshop/main/workshop/cloud-init/motd -o /etc/motd
+  - chmod -x /etc/update-motd.d/*
+
+  # Install Helm
+  - curl -s https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+  # Install K9s (Kubernetes UI)
+  - K9S_VERSION=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | jq -r '.tag_name')
+  - curl -S -OL https://github.com/derailed/k9s/releases/download/"$K9S_VERSION"/k9s_Linux_${architecture}.tar.gz
+  - tar xfz k9s_Linux_${architecture}.tar.gz -C /usr/local/bin/ k9s
+
+  # Install Terraform
+  - TF_VERSION=$(curl -s https://api.github.com/repos/hashicorp/terraform/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+  - curl -S -OL https://releases.hashicorp.com/terraform/"$TF_VERSION"/terraform_"$TF_VERSION"_linux_${architecture}.zip
+  - unzip -qq terraform_"$TF_VERSION"_linux_${architecture}.zip -d /usr/local/bin
+
+  # Download Registry and Deployment files
+  - curl -s https://raw.githubusercontent.com/splunk/observability-workshop/main/workshop/k3s/registry/registry.yaml -o registry.yaml
+  - curl -s https://raw.githubusercontent.com/splunk/observability-workshop/main/workshop/cloud-init/motd -o deployment.yaml
+  
+
+  # Install K3s
+  - curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE="644" sh -
+  # Create kube config and set correct permissions on splunk user home directory
+  - mkdir /home/ubuntu/.kube && kubectl config view --raw > /home/ubuntu/.kube/config
+  - chmod 400 /home/ubuntu/.kube/config
+  - chown -R ubuntu:ubuntu /home/ubuntu
+
+  # Deploy private registry
+  - /usr/local/bin/kubectl apply -f registry.yaml
+
+  # Deploy Splunk secrets
+  - /usr/local/bin/kubectl apply -f /tmp/workshop-secrets.yaml
+
+  # Deploy 
+  - sudo kubectl apply -f deployment.yaml
