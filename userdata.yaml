@@ -46,7 +46,7 @@ write_files:
 
       export INSTANCE CLUSTER_NAME
 
-      export KUBECONFIG=/home/splunk/.kube/config
+      export KUBECONFIG=/home/ubuntu/.kube/config
       alias kc='kubectl'
       alias dc='docker-compose'
 
@@ -91,12 +91,12 @@ runcmd:
 
   # Download Registry and Deployment files
   - curl -s https://raw.githubusercontent.com/splunk/observability-workshop/main/workshop/k3s/registry/registry.yaml -o registry.yaml
-  - curl -s https://raw.githubusercontent.com/splunk/observability-workshop/main/workshop/cloud-init/motd -o deployment.yaml
+  - curl -s https://raw.githubusercontent.com/kofran88/multipass_configs/main/deployment.yaml -o deployment.yaml
   
 
   # Install K3s
   - curl -sfL https://get.k3s.io | K3S_KUBECONFIG_MODE="644" sh -
-  # Create kube config and set correct permissions on splunk user home directory
+  # Create kube config and set correct permissions on ubuntu user home directory
   - mkdir /home/ubuntu/.kube && kubectl config view --raw > /home/ubuntu/.kube/config
   - chmod 400 /home/ubuntu/.kube/config
   - chown -R ubuntu:ubuntu /home/ubuntu
@@ -104,8 +104,8 @@ runcmd:
   # Deploy private registry
   - /usr/local/bin/kubectl apply -f registry.yaml
 
-  # Deploy Splunk secrets
+  # Deploy secrets
   - /usr/local/bin/kubectl apply -f /tmp/workshop-secrets.yaml
 
-  # Deploy 
+  # Deploy App
   - sudo kubectl apply -f deployment.yaml

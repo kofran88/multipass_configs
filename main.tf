@@ -28,12 +28,13 @@ variable "architecture" {
 }
 
 variable "instance_password" {
-  default = "mult!pasS"
+  default = "multipass"
 }
 
 variable "hostname" {
   description = "Hostname for Multipass instance"
   type        = string
+  default     = "kubed"
 }
 
 locals {
